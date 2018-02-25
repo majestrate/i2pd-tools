@@ -12,8 +12,8 @@ function nodeConnected(ident) {
     return;
   }
   nodes[ident] = {
-    send: 0,
-    recv: 0 
+    send: [],
+    recv: [] 
   };
   nodes.length ++;
 }
@@ -29,14 +29,18 @@ function nodeSend(ident, n) {
   if(!nodes[ident]) {
     nodeConnected(ident);
   }
-  nodes[ident].send += parseInt(n);
+  nodes[ident].send.push(parseInt(n));
+  while(nodes[ident].send.length > 50)
+    nodes[ident].send.shift();
 }
 
 function nodeRecv(ident, n) {
   if(!nodes[ident]) {
     nodeConnected(ident);
   }
-  nodes[ident].recv += parseInt(n);
+  nodes[ident].recv.push(parseInt(n));
+  while(nodes[ident].recv.length > 50)
+    nodes[ident].recv.shift();
 }
 
 
@@ -234,7 +238,16 @@ function drawPeer(p) {
 
 function getTraffic(node) {
   if (!node) return 1;
-  return 1.0 + ( (node.send + node.recv + 1.0) / 1.5) ;
+  var amount = 0;
+  for (var idx = 0 ; idx < node.send.length; idx++)
+  {
+    amount += node.send[idx];
+  }
+  for (var idx = 0 ; idx < node.recv.length; idx++)
+  {
+    amount += node.recv[idx];
+  }
+  return 1.0 + ( (amount + 1.0) / 1.5) ;
 }
 var draw = c.getContext("2d");
 var ticks = 0;
@@ -326,19 +339,26 @@ setInterval(function() {
       continue;
     }
     idents.push( ident );
+    nodeRecv(ident, "0");
+    nodeSend(ident, "0");
   }
-
   idents = idents.sort();
   for (var i = 0; i < idents.length; i++) {
     var ident = idents[i];
     rad += ( Math.PI * 2 ) / nodes.length;
 
-    in_traffic += nodes[ident].recv / 10.0 ;
-    out_traffic += nodes[ident].send / 10.0;
-    
-    var send = (nodes[ident].send ) * 5;
-    var recv = (nodes[ident].recv ) * 5;
-
+    var send = 0;
+    for (var idx =0; idx < nodes[ident].send.length; idx++)
+    {
+      send += nodes[ident].send[idx];
+    }
+    var recv = 0;
+    for (var idx =0; idx < nodes[ident].recv.length; idx++)
+    {
+      recv += nodes[ident].recv[idx];
+    }
+    out_traffic = send;
+    in_traffic = recv;
     var traff = (getTraffic(nodes[ident]) - 1) * 5;
     
     var x0 = (Math.cos(rad) * inner_r) + centerx;
@@ -354,9 +374,11 @@ setInterval(function() {
     if(i * 10 < c.height) {
       txt += "| "+leftpad(nodes[ident].recv+" msg/s in", 15)+ " | "+leftpad(nodes[ident].send+" msg/s out", 15)+" |";
       draw.fillText(txt, 100, 20 + (i*10));
-    } */
+      } */
+    /*
     nodes[ident].recv = 0;
     nodes[ident].send = 0;
+    */
     draw.moveTo(x0, y0);
 
     draw.strokeStyle = "#dfa";
@@ -395,11 +417,11 @@ setInterval(function() {
   draw.fillText("In Traffic      | "+leftpad(" "+Math.ceil(in_traffic)+" msg/s", 10), 500, 45);
   draw.fillText("Out Traffic     | "+leftpad(" "+Math.ceil(out_traffic)+" msg/s", 10), 500, 55);
   
-  if (tick % 10 == 0) {
+  if (true || tick %10  == 0) {
     in_traffic = 0;
     out_traffic = 0;
   }
   tick ++;
-}, 100);
+}, 50);
 
 logit("loaded");
